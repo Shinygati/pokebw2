@@ -4,11 +4,15 @@
 #include "constants/places.h"
 #include "constants/pokemon.h"
 #include "constants/items.h"
+#include "constants/species.h"
+#include "constants/flags.h"
+#include "save/event_work.h"
 #include "field/field.h"
 #include "field/field_script.h"
 #include "field/player_state.h"
 #include "field/scrcmd_pokemon.h"
 #include "field/zone.h"
+#include "gfl/random.h"
 #include "gfl/heap.h"
 #include "gfl/msg.h"
 #include "gfl/std.h"
@@ -517,9 +521,9 @@ BOOL Scrcmd_Pokemon_PokePartyAddNPoke(VM *vm, FieldScriptEnv *env) {
     u16 *result;
     u16 species;
     u16 level;
-    u16 nature;
-    u16 ability;
-    u16 sex;
+    u16 unk5;
+    u16 unk7;
+    u16 unk6;
     PartyPkm *pkm;
     NPokeSpec spec;
 
@@ -531,16 +535,16 @@ BOOL Scrcmd_Pokemon_PokePartyAddNPoke(VM *vm, FieldScriptEnv *env) {
     result = ScriptReadVar(vm, env);
     species = ScriptReadAny(vm, env);
     level = ScriptReadAny(vm, env);
-    nature = ScriptReadAny(vm, env);
-    ability = ScriptReadAny(vm, env);
-    sex = ScriptReadAny(vm, env);
+    unk5 = ScriptReadAny(vm, env);
+    unk7 = ScriptReadAny(vm, env);
+    unk6 = ScriptReadAny(vm, env);
     pkm = GFL_HeapAllocate(HEAPID_TAIL(heapId), PokeParty_GetPkmRawSize(), TRUE, "scrcmd_pokemon.c", 0x3bd);
     MI_CpuFill8(&spec, 0, sizeof(NPokeSpec));
     spec.species = species;
     spec.level = level;
-    spec.nature = nature;
-    spec.sex = sex;
-    spec.ability = ability;
+    spec.nature = unk5;
+    spec.sex = unk6;
+    spec.ability = unk7;
     createNPkm(pkm, &spec);
     PokeParty_SetParam(pkm, PKM_PARAM_POKEBALL, PML_ItemGetMonsBallID(4));
     PokeParty_SetupMetData(pkm, 7, playerInfo,
@@ -931,9 +935,6 @@ BOOL Scrcmd_Pokemon_PokePartyAddEgg(VM *vm, FieldScriptEnv *env) {
     return FALSE;
 }
 
-// Consumes the PID rolled while the starter briefcase was displayed.
-
-
 PartyPkm *GameData_MakeBoxPkm(GameData *gameData, BoxPkmCreateParams *params) {
     PlayerInfo *playerInfo;
     u32 trainerId;
@@ -944,6 +945,27 @@ PartyPkm *GameData_MakeBoxPkm(GameData *gameData, BoxPkmCreateParams *params) {
 
     playerInfo = GetGameDataPlayerInfo(gameData);
     trainerId = getIDAsUInt(GetGameDataPlayerInfo(gameData));
+    // Only consume preview flags for the level-5 starter gift.
+    if (params->level == 5 &&
+        (params->species == SPECIES_SNIVY ||
+         params->species == SPECIES_TEPIG ||
+         params->species == SPECIES_OSHAWOTT)) {
+        EventWork *flags = GameData_GetEventWork(gameData);
+        u32 rareMode;
+        if (EventWork_FlagGet(flags, EVENT_FLAG_TEMP_62)) {
+            rareMode = EventWork_FlagGet(flags, EVENT_FLAG_TEMP_63)
+                       ? PID_RARE_ALWAYS : PID_RARE_NEVER;
+            // Consume both flags immediately so no later gift can reuse them.
+            EventWork_FlagReset(flags, EVENT_FLAG_TEMP_62);
+            EventWork_FlagReset(flags, EVENT_FLAG_TEMP_63);
+        } else {
+            // If the briefcase was bypassed, use the normal 1-in-4096 starter odds.
+            rareMode = (GFL_RandomLC(4096) == 0)
+                       ? PID_RARE_ALWAYS : PID_RARE_NEVER;
+        }
+        pid = PML_GenPID(trainerId, (u16)params->species, (u16)params->form,
+                         params->sex, params->ability, rareMode);
+    } else {
     // Preserve explicitly forced shiny/non-shiny gifts.
     // Ordinary gifts receive two attempts, or six with the Shiny Charm.
     if (params->param1C == PID_RARE_RANDOM) {
@@ -958,17 +980,15 @@ PartyPkm *GameData_MakeBoxPkm(GameData *gameData, BoxPkmCreateParams *params) {
     } else {
         pid = PML_GenPID(trainerId, (u16)params->species, (u16)params->form, params->sex, params->ability, params->param1C);
     }
-    // The starter must have exactly the same PID (and shininess) as its preview.
-    // This overrides only the selected briefcase starter, not unrelated gifts.
-    GameData_BriefcaseTakePID(gameData, (u16)params->species, &pid);
+    }
     pkm = PokeParty_NewPkm((u16)params->species, (u16)params->level, trainerId, PKM_IVS_RANDOM, pid, params->heapId);
     PokeParty_ChangeForme(pkm, params->form);
-    PokeParty_SetParam(pkm, PKM_PARAM_ITEM, params->item);
+    PokeParty_SetParam(pkm, 6, params->item);
     if (params->hiddenAbility != 0) {
         PokeParty_SetHiddenAbil(pkm, params->species, params->form);
     }
-    if (GetItemParam((u16)params->ball, ITEM_PARAM_KIND, params->heapId) == 4) {
-        PokeParty_SetParam(pkm, PKM_PARAM_POKEBALL, PML_ItemGetMonsBallID((u16)params->ball));
+    if (GetItemParam((u16)params->ball, 15, params->heapId) == 4) {
+        PokeParty_SetParam(pkm, 0x98, PML_ItemGetMonsBallID((u16)params->ball));
     }
     zoneId = PlayerState_GetZoneID(GameData_GetPlayerState(gameData));
     placeName = ZoneData_GetPlaceNameID(zoneId);

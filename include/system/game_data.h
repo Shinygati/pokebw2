@@ -214,10 +214,4 @@ u8 GameData_GetMedalBoxCursorMedal(GameData *gameData);
 u8 GameData_GetJoinAvenueSeason(GameData *gameData);
 CityState *GameData_GetCityState(GameData *gameData, u32 index);
 
-// Briefcase starter PID storage in ARM9 main code (not overlay 12).
-void GameData_BriefcaseSetPID(GameData *gameData, u32 index, u32 pid);
-void GameData_BriefcaseSetPending(GameData *gameData, BOOL pending);
-u16 *GameData_BriefcaseChoicePtr(GameData *gameData);
-BOOL GameData_BriefcaseTakePID(GameData *gameData, u16 species, u32 *pid);
-
 #endif // POKEBW2_SYSTEM_GAME_DATA_H

@@ -5,6 +5,10 @@
 #include "constants/script_text_banks.h"
 #include "constants/sound.h"
 #include "constants/species.h"
+#include "constants/flags.h"
+#include "save/event_work.h"
+#include "system/game_data.h"
+#include "system/game_system.h"
 #include "gfl/arc.h"
 #include "gfl/arc_util.h"
 #include "gfl/bg_sys.h"
@@ -18,6 +22,7 @@
 #include "gfl/key.h"
 #include "gfl/msg.h"
 #include "gfl/proc.h"
+#include "gfl/random.h"
 #include "gfl/sound.h"
 #include "gfl/std.h"
 #include "gfl/str.h"
@@ -211,6 +216,8 @@ typedef struct {
     u8 bgPalStep;
     u8 bgPalTarget;
     s32 fadeFreq;
+    // Isolated preview test: owned by this overlay only, no GameData changes.
+    u8 starterPreviewRare[PSEL_POKE_COUNT];
 } PselWork;
 
 // The camera curve's frames of a ball: the zoom on it and its end, the picked ball's flight and its end, and when the
@@ -475,6 +482,19 @@ static BOOL PselProc_Init(GameProc *proc, u32 *state, void *param, void *work) {
     wk->choice = PSEL_CHOICE_NONE;
     wk->ball = PSEL_CHOICE_NONE;
     wk->pokeArrived = FALSE;
+    // A new selection invalidates any previous unconsumed result.
+    {
+        EventWork *flags = GameData_GetEventWork(GSYS_GetGameData(g_GameSystem));
+        EventWork_FlagReset(flags, EVENT_FLAG_TEMP_62);
+        EventWork_FlagReset(flags, EVENT_FLAG_TEMP_63);
+    }
+    // Roll once per displayed starter when the briefcase opens.
+    {
+        u32 i;
+        for (i = 0; i < PSEL_POKE_COUNT; i++) {
+            wk->starterPreviewRare[i] = (GFL_RandomLC(4096) == 0);
+        }
+    }
     wk->step = 0;
     return TRUE;
 }
@@ -500,7 +520,20 @@ static BOOL PselProc_Exit(GameProc *proc, u32 *state, void *param, void *work) {
         break;
     }
     wk->param->choice = wk->choice;
-    *wk->param->starterChoice = (wk->choice >= 0 && wk->choice < 3) ? (u16)wk->choice : 0xffff;
+    // Carry the selected preview's shininess using temporary flags only.
+    // TEMP_62 = a selection is pending; TEMP_63 = selected preview shiny.
+    // No persistent save flags, extra global arrays, or GameData layout changes.
+    {
+        EventWork *flags = GameData_GetEventWork(GSYS_GetGameData(g_GameSystem));
+        EventWork_FlagReset(flags, EVENT_FLAG_TEMP_62);
+        EventWork_FlagReset(flags, EVENT_FLAG_TEMP_63);
+        if (wk->choice < PSEL_POKE_COUNT) {
+            if (wk->starterPreviewRare[wk->choice]) {
+                EventWork_FlagSet(flags, EVENT_FLAG_TEMP_63);
+            }
+            EventWork_FlagSet(flags, EVENT_FLAG_TEMP_62);
+        }
+    }
     GFL_ProcReleaseSubsystem(proc);
     GFL_HeapDelete(HEAPID_PSEL);
     return TRUE;
@@ -757,9 +790,9 @@ static void PselPoke_Load(PselWork *wk) {
     pokeArc = MakePokeGraArcHandle(wk->heapId);
     for (i = 0; i < PSEL_POKE_COUNT; i++) {
         u32 species = sPselSpecies[i];
-        BOOL rare = wk->param->starterRare[i];
+        BOOL rare = wk->starterPreviewRare[i];
 
-        wk->poke[i].res[0].chars = PokeGra_LoadClActChars(pokeArc, species, 0, 0, rare, 0, FALSE, wk->param->starterPids[i], 1, wk->heapId);
+        wk->poke[i].res[0].chars = PokeGra_LoadClActChars(pokeArc, species, 0, 0, rare, 0, FALSE, 0, 1, wk->heapId);
         wk->poke[i].res[0].pltt = PokeGra_LoadClActPalette(pokeArc, species, 0, 0, rare, 0, FALSE, 1,
                                                            sPselPokePaletteSlots[i] * 32, wk->heapId);
         wk->poke[i].res[0].cellAnim = PokeGra_LoadClActCellAnims(species, 0, 0, rare, 0, FALSE, 0, 1, wk->heapId);
@@ -1542,28 +1575,27 @@ static void PselPokePal_Load(PselWork *wk) {
     }
     GFL_ArcToolFree(arc);
 
-    // The jumping starter pictures use fixed archive palettes, not their
-    // PokeGra palettes. Replace the normal palette when the rolled PID is shiny.
+    // Independent 1-in-3 preview diagnostic. This is NOT PID transfer yet.
     {
         ArcTool *pokeArc = MakePokeGraArcHandle(wk->heapId);
         for (i = 0; i < PSEL_POKE_COUNT; i++) {
-            if (wk->param->starterRare[i]) {
-                NNSG2dPaletteData *palette;
-                u32 fileId = GetPokemonPaletteDataNo(GetPokemonGraphicsARCID(),
-                                   sPselSpecies[i], 0, 0, TRUE, 0, FALSE);
-                void *shiny = GFL_G2DIOReadNCLRArc(pokeArc, fileId, &palette, wk->heapId);
-                u32 j;
-                MI_CpuCopy8(palette->pRawData, wk->poke[i].palNormal,
-                            sizeof(wk->poke[i].palNormal));
-                GFL_HeapFree(shiny);
-                // Darken the same shiny colours for unselected starters.
-                for (j = 0; j < 16; j++) {
-                    u16 color = wk->poke[i].palNormal[j];
-                    u16 r = (color & 31) / 3;
-                    u16 g = ((color >> 5) & 31) / 3;
-                    u16 b = ((color >> 10) & 31) / 3;
-                    wk->poke[i].palDark[j] = r | (g << 5) | (b << 10);
-                }
+            if (wk->starterPreviewRare[i]) {
+            NNSG2dPaletteData *palette;
+            u32 fileId = GetPokemonPaletteDataNo(GetPokemonGraphicsARCID(),
+                                                   sPselSpecies[i], 0, 0, TRUE, 0, FALSE);
+            void *shiny = GFL_G2DIOReadNCLRArc(pokeArc, fileId, &palette, wk->heapId);
+            u32 j;
+
+            MI_CpuCopy8(palette->pRawData, wk->poke[i].palNormal,
+                        sizeof(wk->poke[i].palNormal));
+            GFL_HeapFree(shiny);
+            for (j = 0; j < 16; j++) {
+                u16 color = wk->poke[i].palNormal[j];
+                u16 r = (color & 31) / 3;
+                u16 g = ((color >> 5) & 31) / 3;
+                u16 b = ((color >> 10) & 31) / 3;
+                wk->poke[i].palDark[j] = r | (g << 5) | (b << 10);
+            }
             }
         }
         GFL_ArcToolFree(pokeArc);
