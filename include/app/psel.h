@@ -17,10 +17,6 @@
 typedef struct {
     u16 *result;
     s32 choice;
-    // A single personality per displayed starter, rolled before the briefcase opens.
-    u32 starterPids[3];
-    u8 starterRare[3];
-    u16 *starterChoice;
 } PselParam;
 
 extern const GameProcFunctions PselProcFunctions;

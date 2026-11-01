@@ -6,8 +6,6 @@
 #include "app/national_pokedex_award.h"
 #include "app/pokedex_award.h"
 #include "app/psel.h"
-#include "constants/species.h"
-#include "save/player_info.h"
 #include "app/regional_pokedex_award.h"
 #include "app/subway_map.h"
 #include "field/entree_forest.h"
@@ -21,7 +19,6 @@
 #include "field/intrude_work.h"
 #include "field/scrcmd_proc.h"
 #include "gfl/heap.h"
-#include "gfl/random.h"
 #include "gfl/overlay.h"
 #include "gfl/std.h"
 #include "pml/move_reminder.h"
@@ -304,14 +301,14 @@ BOOL Scrcmd_Proc_CallPokedexDiploma(VM *vm, FieldScriptEnv *env) {
     case 0:
         award = GFL_HeapAllocate(HEAPID_GAMEEVENT, sizeof(PokedexAwardParam), TRUE, "scrcmd_proc.c", 546);
         award->gameData = gameData;
-        award->skipIntro = value;
+        award->unk04 = value;
         CreateScrCmdOverlayProcess(vm, env, OVERLAY_REGIONAL_POKEDEX_AWARD, &REGIONAL_POKEDEX_AWARD_PROC_FUNCTIONS,
                                    award, NULL, NULL);
         break;
     case 1:
         award = GFL_HeapAllocate(HEAPID_GAMEEVENT, sizeof(PokedexAwardParam), TRUE, "scrcmd_proc.c", 554);
         award->gameData = gameData;
-        award->skipIntro = value;
+        award->unk04 = value;
         CreateScrCmdOverlayProcess(vm, env, OVERLAY_NATIONAL_POKEDEX_AWARD, &NATIONAL_POKEDEX_AWARD_PROC_FUNCTIONS,
                                    award, NULL, NULL);
         break;
@@ -337,30 +334,6 @@ BOOL Scrcmd_Proc_callPoke3Select(VM *vm, FieldScriptEnv *env) {
 
     result = ScriptReadVar(vm, env);
     param = GFL_HeapAllocate(HEAPID_GAMEEVENT, sizeof(PselParam), TRUE, "scrcmd_proc.c", 597);
-    // TEST BUILD: exact 1-in-3 shiny chance for each displayed starter.
-    // No Shiny Charm is needed. Each PID is generated once when the screen opens.
-    {
-        GameData *gameData = FieldScriptEnv_GetGameData(env);
-        u32 trainerId = getIDAsUInt(GetGameDataPlayerInfo(gameData));
-        u32 i;
-        for (i = 0; i < 3; i++) {
-            u16 species;
-            u32 rareMode;
-            u32 pid;
-            switch (i) {
-            case 0: species = SPECIES_SNIVY; break;
-            case 1: species = SPECIES_TEPIG; break;
-            default: species = SPECIES_OSHAWOTT; break;
-            }
-            rareMode = (GFL_RandomLC(4096) == 0) ? PID_RARE_ALWAYS : PID_RARE_NEVER;
-            pid = PML_GenPID(trainerId, species, 0, 0xff, 2, rareMode);
-            param->starterPids[i] = pid;
-            param->starterRare[i] = PML_UtilPIDIsRare(trainerId, pid);
-            GameData_BriefcaseSetPID(gameData, i, pid);
-        }
-    }
-    GameData_BriefcaseSetPending(FieldScriptEnv_GetGameData(env), TRUE);
-    param->starterChoice = GameData_BriefcaseChoicePtr(FieldScriptEnv_GetGameData(env));
     param->result = result;
     CreateScrCmdOverlayProcess(vm, env, OVERLAY_PSEL, &PselProcFunctions, param, NULL, NULL);
     return TRUE;
@@ -412,9 +385,9 @@ BOOL Scrcmd_Proc_NetConnectWiFiBattle(VM *vm, FieldScriptEnv *env) {
         break;
     }
     args.field = GSYS_GetField(gsys);
-    args.startFrom = 1;
-    args.teamSource = option;
-    args.battleType = type;
+    args.unk4 = 1;
+    args.unk8 = option;
+    args.unkC = type;
     event = GameEvent_CreateOverlayDelegate(gsys, OVERLAY_ID(2), EventWifiBattleMatch_CreateFromArgs, &args);
     ScriptWork_CallEvent(work, event);
     return TRUE;
@@ -442,7 +415,7 @@ BOOL Scrcmd_Proc_NetConnectBattleVideo(VM *vm, FieldScriptEnv *env) {
     return TRUE;
 }
 
-BOOL Scrcmd_Proc_GimmickSetNimbasaGym(VM *vm, FieldScriptEnv *env) {
+BOOL func_ov012_02157b7c(VM *vm, FieldScriptEnv *env) {
     GameSystem *gsys;
     u16 value;
 
@@ -454,7 +427,7 @@ BOOL Scrcmd_Proc_GimmickSetNimbasaGym(VM *vm, FieldScriptEnv *env) {
     return FALSE;
 }
 
-BOOL Scrcmd_Proc_GimmickResetOpelucid(VM *vm, FieldScriptEnv *env) {
+BOOL func_ov012_02157bb4(VM *vm, FieldScriptEnv *env) {
     GameSystem *gsys;
 
     gsys = FieldScriptEnv_GetGameSystem(env);
@@ -464,7 +437,7 @@ BOOL Scrcmd_Proc_GimmickResetOpelucid(VM *vm, FieldScriptEnv *env) {
     return FALSE;
 }
 
-BOOL Scrcmd_Proc_GimmickSetNimbasaFlags(VM *vm, FieldScriptEnv *env) {
+BOOL func_ov012_02157bdc(VM *vm, FieldScriptEnv *env) {
     GameSystem *gsys;
     u16 *first;
     u16 *second;
