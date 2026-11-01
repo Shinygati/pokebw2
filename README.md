@@ -3,6 +3,11 @@
 A work-in-progress decompilation of Pokémon Black 2 and White 2, with a long-term goal of a native PC port.
 Both USA/Europe ROMs rebuild byte for byte from the same source tree.
 
+## Changes
+- Base shiny odds are now 1/4096
+- Shiny charm odds are 1/1365
+- Starters from the briefcase will show shiny sprites.
+
 ## Progress
 
 [![Code](https://bytematch.dev/fuddlesworth/pokebw2.svg?mode=shield&measure=matched_code_percent&label=Code)](https://bytematch.dev/fuddlesworth/pokebw2)
