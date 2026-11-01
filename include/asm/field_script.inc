@@ -2145,8 +2145,7 @@
     .2byte \a0
     .endm
 
-    // func_ov012_02157bdc
-    .macro Cmd_017B a0, a1
+    .macro GimmickSetNimbasaFlags a0, a1
     FieldCommand 379
     .2byte \a0
     .2byte \a1
@@ -2849,13 +2848,13 @@
     .2byte \a0
     .endm
 
-    .macro AreaNPCCmd_0218 a0, a1
+    .macro EntreeForestGetInfo a0, a1
     FieldCommand 536
     .2byte \a0
     .2byte \a1
     .endm
 
-    .macro AreaNPCCmd_0219 a0, a1
+    .macro EntreeForestToggleKeepPkm a0, a1
     FieldCommand 537
     .2byte \a0
     .2byte \a1
@@ -2887,15 +2886,13 @@
     .2byte \a0
     .endm
 
-    // func_ov012_02156104
-    .macro Cmd_021F a0, a1
+    .macro SeasonTrainerGetObjCode a0, a1
     FieldCommand 543
     .2byte \a0
     .2byte \a1
     .endm
 
-    // func_ov012_02156128
-    .macro Cmd_0220 a0, a1
+    .macro SeasonTrainerGetTrainerID a0, a1
     FieldCommand 544
     .2byte \a0
     .2byte \a1
@@ -3041,8 +3038,7 @@
     .2byte \a1
     .endm
 
-    // func_ov012_02169c1c
-    .macro Cmd_023B
+    .macro NuvemaGimmickSetVisible
     FieldCommand 571
     .endm
 
@@ -3171,8 +3167,7 @@
     .byte \a0
     .endm
 
-    // func_ov012_02157b7c
-    .macro Cmd_025A a0
+    .macro GimmickSetNimbasaGym a0
     FieldCommand 602
     .2byte \a0
     .endm
@@ -3225,7 +3220,7 @@
     .2byte \a0
     .endm
 
-    .macro HollowRivalCmd_0267
+    .macro HollowRivalSetMet
     FieldCommand 615
     .endm
 
@@ -3472,8 +3467,7 @@
     FieldCommand 675
     .endm
 
-    // func_ov012_02157bb4
-    .macro Cmd_02A4
+    .macro GimmickResetOpelucid
     FieldCommand 676
     .endm
 
@@ -3606,7 +3600,7 @@
     .2byte \a0
     .endm
 
-    .macro HollowRivalCmd_02C3 a0
+    .macro HollowRivalSetSpecies a0
     FieldCommand 707
     .2byte \a0
     .endm
