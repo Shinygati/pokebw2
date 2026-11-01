@@ -500,6 +500,7 @@ static BOOL PselProc_Exit(GameProc *proc, u32 *state, void *param, void *work) {
         break;
     }
     wk->param->choice = wk->choice;
+    *wk->param->starterChoice = (wk->choice >= 0 && wk->choice < 3) ? (u16)wk->choice : 0xffff;
     GFL_ProcReleaseSubsystem(proc);
     GFL_HeapDelete(HEAPID_PSEL);
     return TRUE;
@@ -756,11 +757,12 @@ static void PselPoke_Load(PselWork *wk) {
     pokeArc = MakePokeGraArcHandle(wk->heapId);
     for (i = 0; i < PSEL_POKE_COUNT; i++) {
         u32 species = sPselSpecies[i];
+        BOOL rare = wk->param->starterRare[i];
 
-        wk->poke[i].res[0].chars = PokeGra_LoadClActChars(pokeArc, species, 0, 0, FALSE, 0, FALSE, 0, 1, wk->heapId);
-        wk->poke[i].res[0].pltt = PokeGra_LoadClActPalette(pokeArc, species, 0, 0, FALSE, 0, FALSE, 1,
+        wk->poke[i].res[0].chars = PokeGra_LoadClActChars(pokeArc, species, 0, 0, rare, 0, FALSE, wk->param->starterPids[i], 1, wk->heapId);
+        wk->poke[i].res[0].pltt = PokeGra_LoadClActPalette(pokeArc, species, 0, 0, rare, 0, FALSE, 1,
                                                            sPselPokePaletteSlots[i] * 32, wk->heapId);
-        wk->poke[i].res[0].cellAnim = PokeGra_LoadClActCellAnims(species, 0, 0, FALSE, 0, FALSE, 0, 1, wk->heapId);
+        wk->poke[i].res[0].cellAnim = PokeGra_LoadClActCellAnims(species, 0, 0, rare, 0, FALSE, 0, 1, wk->heapId);
     }
     GFL_ArcToolFree(pokeArc);
 
@@ -1539,6 +1541,33 @@ static void PselPokePal_Load(PselWork *wk) {
         GFL_HeapFree(dark);
     }
     GFL_ArcToolFree(arc);
+
+    // The jumping starter pictures use fixed archive palettes, not their
+    // PokeGra palettes. Replace the normal palette when the rolled PID is shiny.
+    {
+        ArcTool *pokeArc = MakePokeGraArcHandle(wk->heapId);
+        for (i = 0; i < PSEL_POKE_COUNT; i++) {
+            if (wk->param->starterRare[i]) {
+                NNSG2dPaletteData *palette;
+                u32 fileId = GetPokemonPaletteDataNo(GetPokemonGraphicsARCID(),
+                                   sPselSpecies[i], 0, 0, TRUE, 0, FALSE);
+                void *shiny = GFL_G2DIOReadNCLRArc(pokeArc, fileId, &palette, wk->heapId);
+                u32 j;
+                MI_CpuCopy8(palette->pRawData, wk->poke[i].palNormal,
+                            sizeof(wk->poke[i].palNormal));
+                GFL_HeapFree(shiny);
+                // Darken the same shiny colours for unselected starters.
+                for (j = 0; j < 16; j++) {
+                    u16 color = wk->poke[i].palNormal[j];
+                    u16 r = (color & 31) / 3;
+                    u16 g = ((color >> 5) & 31) / 3;
+                    u16 b = ((color >> 10) & 31) / 3;
+                    wk->poke[i].palDark[j] = r | (g << 5) | (b << 10);
+                }
+            }
+        }
+        GFL_ArcToolFree(pokeArc);
+    }
 
     for (i = 0; i < PSEL_POKE_COUNT; i++) {
         wk->poke[i].palState = PSEL_PAL_DARK;

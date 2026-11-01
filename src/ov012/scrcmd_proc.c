@@ -6,6 +6,8 @@
 #include "app/national_pokedex_award.h"
 #include "app/pokedex_award.h"
 #include "app/psel.h"
+#include "constants/species.h"
+#include "save/player_info.h"
 #include "app/regional_pokedex_award.h"
 #include "app/subway_map.h"
 #include "field/entree_forest.h"
@@ -19,6 +21,7 @@
 #include "field/intrude_work.h"
 #include "field/scrcmd_proc.h"
 #include "gfl/heap.h"
+#include "gfl/random.h"
 #include "gfl/overlay.h"
 #include "gfl/std.h"
 #include "pml/move_reminder.h"
@@ -334,6 +337,30 @@ BOOL Scrcmd_Proc_callPoke3Select(VM *vm, FieldScriptEnv *env) {
 
     result = ScriptReadVar(vm, env);
     param = GFL_HeapAllocate(HEAPID_GAMEEVENT, sizeof(PselParam), TRUE, "scrcmd_proc.c", 597);
+    // TEST BUILD: exact 1-in-3 shiny chance for each displayed starter.
+    // No Shiny Charm is needed. Each PID is generated once when the screen opens.
+    {
+        GameData *gameData = FieldScriptEnv_GetGameData(env);
+        u32 trainerId = getIDAsUInt(GetGameDataPlayerInfo(gameData));
+        u32 i;
+        for (i = 0; i < 3; i++) {
+            u16 species;
+            u32 rareMode;
+            u32 pid;
+            switch (i) {
+            case 0: species = SPECIES_SNIVY; break;
+            case 1: species = SPECIES_TEPIG; break;
+            default: species = SPECIES_OSHAWOTT; break;
+            }
+            rareMode = (GFL_RandomLC(4096) == 0) ? PID_RARE_ALWAYS : PID_RARE_NEVER;
+            pid = PML_GenPID(trainerId, species, 0, 0xff, 2, rareMode);
+            param->starterPids[i] = pid;
+            param->starterRare[i] = PML_UtilPIDIsRare(trainerId, pid);
+            GameData_BriefcaseSetPID(gameData, i, pid);
+        }
+    }
+    GameData_BriefcaseSetPending(FieldScriptEnv_GetGameData(env), TRUE);
+    param->starterChoice = GameData_BriefcaseChoicePtr(FieldScriptEnv_GetGameData(env));
     param->result = result;
     CreateScrCmdOverlayProcess(vm, env, OVERLAY_PSEL, &PselProcFunctions, param, NULL, NULL);
     return TRUE;

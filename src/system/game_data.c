@@ -1,6 +1,7 @@
 #include "system/game_data.h"
 #include "types.h"
 #include "constants/directions.h"
+#include "constants/species.h"
 #include "constants/zones.h"
 #include "field/calender.h"
 #include "field/encounter.h"
@@ -145,7 +146,11 @@ struct GameData {
     u8 funfestMission;
     JoinAvenuePersonList *joinAvenuePersonList;
     ResortWork *resortWork;
-}; // size: 0x318
+    // Extra runtime-only starter preview state (never written to save data).
+    u32 briefcaseStarterPids[3];
+    u16 briefcaseStarterChoice;
+    BOOL briefcaseStarterPending;
+}; // Original size: 0x318; extended for the starter preview patch
 
 static void PlayerState_Init(PlayerState *playerState);
 static void GameData_LoadBackup(GameData *gameData);
@@ -1042,4 +1047,38 @@ void GameData_IncCounter(GameData *gameData) {
 
 void GameData_ResetCounter(GameData *gameData) {
     gameData->counter = 0;
+}
+
+// Store starter state in the allocated GameData instance, not in a new .bss section.
+void GameData_BriefcaseSetPID(GameData *gameData, u32 index, u32 pid) {
+    if (index < 3) {
+        gameData->briefcaseStarterPids[index] = pid;
+    }
+}
+
+void GameData_BriefcaseSetPending(GameData *gameData, BOOL pending) {
+    gameData->briefcaseStarterPending = pending;
+    gameData->briefcaseStarterChoice = 0xffff;
+}
+
+u16 *GameData_BriefcaseChoicePtr(GameData *gameData) {
+    return &gameData->briefcaseStarterChoice;
+}
+
+BOOL GameData_BriefcaseTakePID(GameData *gameData, u16 species, u32 *pid) {
+    u16 expected;
+    if (!gameData->briefcaseStarterPending || gameData->briefcaseStarterChoice >= 3) {
+        return FALSE;
+    }
+    switch (gameData->briefcaseStarterChoice) {
+    case 0: expected = SPECIES_SNIVY; break;
+    case 1: expected = SPECIES_TEPIG; break;
+    default: expected = SPECIES_OSHAWOTT; break;
+    }
+    if (species != expected) {
+        return FALSE;
+    }
+    *pid = gameData->briefcaseStarterPids[gameData->briefcaseStarterChoice];
+    gameData->briefcaseStarterPending = FALSE;
+    return TRUE;
 }
