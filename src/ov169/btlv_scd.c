@@ -534,7 +534,7 @@ BtlvScd *BtlvScd_Create(BtlvCore *core, BtlMainModule *mainModule, BtlPokeCon *p
     scd->forceQuit = FALSE;
     scd->typeCount = BattleClient_GetAudienceSize(client);
     scd->typeMask = BattleClient_GetAudienceMask(client);
-    scd->noCancel = func_ov167_0219c9c0(mainModule);
+    scd->noCancel = IsStudioSkipDisabled(mainModule);
     scd->keyCursorFlag = GameData_GetBattleKeyCursorFlag(GetGameData(scd->mainModule));
     scd->printQueue = PrintQueue_CreateDefault(scd->heapId);
     BtlvScd_ClearProcs(scd);
@@ -547,10 +547,10 @@ void BtlvScd_CreateInput(BtlvScd *scd) {
     u32 battleType = BtlSetup_GetBattleType(scd->mainModule);
     PaletteFade *paletteFade = BtlvEffect_GetPaletteFade();
     u8 multiMode = GetMultiMode(scd->mainModule);
-    u32 fileSet = GetStudioMode(scd->mainModule);
+    u32 studioMode = GetStudioMode(scd->mainModule);
 
     scd->input = BtlvInput_CreateForBattle(gameData, rule, battleType, paletteFade, scd->font, &scd->keyCursorFlag,
-                                           scd->scdState, multiMode, fileSet, scd->typeCount, scd->typeMask,
+                                           scd->scdState, multiMode, studioMode, scd->typeCount, scd->typeMask,
                                            scd->noCancel, scd->heapId);
     GFL_BGSysSetBGEnabledB(0x10, TRUE);
     BtlvScd_Nop(scd);
