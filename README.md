@@ -7,6 +7,7 @@ Both USA/Europe ROMs rebuild byte for byte from the same source tree.
 - Base shiny odds are now 1/4096
 - Shiny charm odds are 1/1365
 - Starters from the briefcase will show shiny sprites.
+- Shiny odds logic is legally generated.
 
 ## Progress
 
