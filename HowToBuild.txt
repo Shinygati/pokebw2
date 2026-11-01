@@ -1,0 +1,3 @@
+cd ~/pokebw2
+python3 configure.py b2_us w2_us --no-download
+ninja -j8

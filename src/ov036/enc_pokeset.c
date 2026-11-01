@@ -321,14 +321,19 @@ u8 FieldEncount_RndCheckNPoke(EncountManager *manager, u32 zoneId) {
 
 void FieldEncount_CreateWildPkm(PartyPkm *pkm, const EncountManager *manager, WildPkmParam *param) {
     PersonalData *personal = PML_PersonalLoad(param->species, param->form, 4);
-    u32 rolls = 1;
+    u32 rolls = 2;
     u32 pid;
     u32 i;
 
     if (BagSave_CheckAmount(GameData_GetBag(manager->gameData), ITEM_SHINY_CHARM, 1, 4)) {
-        rolls += 2;
+        rolls += 4;
     }
-    rolls = PassPower_ApplyLuckyShiny(rolls);
+    if (param->shinyLock == WILD_SHINY_NEVER || param->shinyLock == WILD_SHINY_FORCED) {
+        rolls = 1;
+    }
+    if (param->shinyLock == WILD_SHINY_RANDOM) {
+        rolls = PassPower_ApplyLuckyShiny(rolls);
+    }
     for (i = 0; i < rolls; i++) {
         pid = FieldEncount_GenPID(manager, personal, param);
         if (PML_UtilPIDIsRare(manager->trainerId, pid)) {

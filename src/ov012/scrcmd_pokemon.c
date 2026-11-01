@@ -3,6 +3,7 @@
 #include "types.h"
 #include "constants/places.h"
 #include "constants/pokemon.h"
+#include "constants/items.h"
 #include "field/field.h"
 #include "field/field_script.h"
 #include "field/player_state.h"
@@ -18,6 +19,7 @@
 #include "pml/poke_party.h"
 #include "pml/species_names.h"
 #include "save/box.h"
+#include "save/bag.h"
 #include "save/player_info.h"
 #include "save/pokedex_savedata.h"
 #include "save/save_control.h"
@@ -929,6 +931,9 @@ BOOL Scrcmd_Pokemon_PokePartyAddEgg(VM *vm, FieldScriptEnv *env) {
     return FALSE;
 }
 
+// Consumes the PID rolled while the starter briefcase was displayed.
+
+
 PartyPkm *GameData_MakeBoxPkm(GameData *gameData, BoxPkmCreateParams *params) {
     PlayerInfo *playerInfo;
     u32 trainerId;
@@ -939,7 +944,23 @@ PartyPkm *GameData_MakeBoxPkm(GameData *gameData, BoxPkmCreateParams *params) {
 
     playerInfo = GetGameDataPlayerInfo(gameData);
     trainerId = getIDAsUInt(GetGameDataPlayerInfo(gameData));
-    pid = PML_GenPID(trainerId, (u16)params->species, (u16)params->form, params->sex, params->ability, params->param1C);
+    // Preserve explicitly forced shiny/non-shiny gifts.
+    // Ordinary gifts receive two attempts, or six with the Shiny Charm.
+    if (params->param1C == PID_RARE_RANDOM) {
+        u32 rolls = BagSave_CheckAmount(GameData_GetBag(gameData), ITEM_SHINY_CHARM, 1, params->heapId) ? 6 : 2;
+        u32 i;
+        for (i = 0; i < rolls; i++) {
+            pid = PML_GenPID(trainerId, (u16)params->species, (u16)params->form, params->sex, params->ability, params->param1C);
+            if (PML_UtilPIDIsRare(trainerId, pid)) {
+                break;
+            }
+        }
+    } else {
+        pid = PML_GenPID(trainerId, (u16)params->species, (u16)params->form, params->sex, params->ability, params->param1C);
+    }
+    // The starter must have exactly the same PID (and shininess) as its preview.
+    // This overrides only the selected briefcase starter, not unrelated gifts.
+    GameData_BriefcaseTakePID(gameData, (u16)params->species, &pid);
     pkm = PokeParty_NewPkm((u16)params->species, (u16)params->level, trainerId, PKM_IVS_RANDOM, pid, params->heapId);
     PokeParty_ChangeForme(pkm, params->form);
     PokeParty_SetParam(pkm, 6, params->item);

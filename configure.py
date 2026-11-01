@@ -996,7 +996,7 @@ def main():
     # needs a backup suffix after -i, which GNU sed also takes
     n.rule("rom_config", "$dsd rom config --elf $in --config $config && sed -i.bak "
            "'s|^files_dir: .*|files_dir: ../files|' $out && rm $out.bak", "Configuring ROM for $config")
-    n.rule("rom_build", "$dsd rom build --config $in --rom $out", "Building $out")
+    n.rule("rom_build", "$dsd rom build --config $in --rom $out --arm7-bios bios/bios7.bin", "Building $out")
     n.rule("check_modules", "$dsd check modules --config-path $config --fail && touch $out", "Checking modules")
     n.rule("sha1", "sha1sum --quiet -c $in && touch $out", "Checking $rom")
     # The context stays UTF-8, for decomp.me
