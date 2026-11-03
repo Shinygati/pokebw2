@@ -3,6 +3,7 @@
 A work-in-progress decompilation of Pokémon Black 2 and White 2, with a long-term goal of a native PC port.
 Both USA/Europe ROMs rebuild byte for byte from the same source tree.
 
+<<<<<<< HEAD
 ## Progress
 
 [![Code](https://bytematch.dev/fuddlesworth/pokebw2.svg?mode=shield&measure=matched_code_percent&label=Code)](https://bytematch.dev/fuddlesworth/pokebw2)
@@ -16,6 +17,27 @@ version, for ARM9 main and the overlays, and for the game's code and each librar
 
 Requires Linux, WSL or macOS, Python 3.11+, ninja, and LLVM (`clang` and `llvm-objcopy` on your `PATH`).
 
+=======
+## Changes
+- Base shiny odds are now 1/4096
+- Shiny charm odds are 1/1365
+- Starters from the briefcase will show shiny sprites.
+- Shiny odds logic is legally generated.
+
+## Progress
+
+[![Code](https://bytematch.dev/fuddlesworth/pokebw2.svg?mode=shield&measure=matched_code_percent&label=Code)](https://bytematch.dev/fuddlesworth/pokebw2)
+[![Functions](https://bytematch.dev/fuddlesworth/pokebw2.svg?mode=shield&measure=matched_functions&label=Functions)](https://bytematch.dev/fuddlesworth/pokebw2)
+[![Files](https://bytematch.dev/fuddlesworth/pokebw2.svg?mode=shield&measure=complete_units&label=Complete%20files)](https://bytematch.dev/fuddlesworth/pokebw2)
+
+Progress updates automatically from CI. [ByteMatch](https://bytematch.dev/fuddlesworth/pokebw2) shows it for each
+version, for ARM9 main and the overlays, and for the game's code and each library.
+
+## Build
+
+Requires Linux, WSL or macOS, Python 3.11+, ninja, and LLVM (`clang` and `llvm-objcopy` on your `PATH`).
+
+>>>>>>> f8456e75a41faad6befe011e7fa75e95f232e854
 1. Place your own ROM dumps in `orig/`, using the filenames below.
 2. Configure and build:
 
